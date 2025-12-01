@@ -1,0 +1,33 @@
+前端部署 (Netlify)
+将 client 目录部署到 Netlify
+确保环境变量设置正确
+后端API服务部署
+部署 server 目录到 Heroku、Vercel 或其他支持Node.js的服务
+设置环境变量:
+PORT: 服务器端口 (默认3001)
+MT4_API_URL: MT4 API地址
+MT4_API_KEY: MT4 API密钥 (如需要)
+数据收集器部署
+数据收集器可以部署为:
+
+AWS Lambda 函数
+Google Cloud Functions
+Heroku 定时任务 (Scheduler)
+GitHub Actions 定时任务
+配置MT4数据收集
+编辑 mt4-collector/config.json 文件
+配置您的MT4账户信息
+根据您的MT4版本实现具体的数据收集逻辑
+API文档参考: https://www.mql5.com/en/docs/integration/metatrader
+
+环境变量
+后端服务 (server)
+PORT: 服务器端口 (默认3001)
+MT4_API_URL: MT4 API地址
+MT4_API_KEY: MT4 API密钥 (如需要)
+数据收集器 (mt4-collector)
+MT4_API_URL: MT4 API地址
+MT4_USERNAME: MT4用户名 (如需要)
+MT4_PASSWORD: MT4密码 (如需要)
+定时任务
+数据收集器默认每5分钟自动运行一次，您可以通过修改 server/server.js 中的cron表达式来调整频率。
