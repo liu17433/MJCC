@@ -1,0 +1,55 @@
+
+## 6. 使用说明
+
+1. **部署前端**：将 `client` 目录部署到您的Netlify账户
+2. **部署后端**：将 `server` 目录部署到支持Node.js的云服务（如Heroku、Vercel等）
+3. **设置环境变量**：确保在后端服务中设置了正确的环境变量
+4. **部署数据收集器**：将 `mt4-collector` 部署为云函数或定时任务
+
+## 7. 简化版本 - 仅使用GitHub Actions
+
+如果您不想部署后端服务，可以使用GitHub Actions作为简单解决方案：
+
+1. 创建一个GitHub仓库，包含上述所有文件
+2. 创建以下文件：
+
+**`.github/workflows/collect-mt4-data.yml`**:
+```yaml
+name: Collect MT4 Data
+
+on:
+  schedule:
+    # 每小时运行一次
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  collect-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Collect MT4 data
+        run: |
+          npm run collector
+        env:
+          MT4_API_URL: ${{ secrets.MT4_API_URL }}
+          MT4_API_KEY: ${{ secrets.MT4_API_KEY }}
+          
+      - name: Commit and push data
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add server/data/accounts.json
+          git diff --staged --quiet || git commit -m "Update MT4 data"
+          git push
