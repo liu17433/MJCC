@@ -1,0 +1,19 @@
+{
+  "name": "mt4-server",
+  "version": "1.0.0",
+  "description": "MT4交易数据后端服务",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "axios": "^1.4.0",
+    "node-cron": "^3.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
