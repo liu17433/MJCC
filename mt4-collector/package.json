@@ -1,0 +1,12 @@
+{
+  "name": "mt4-data-collector",
+  "version": "1.0.0",
+  "description": "从MT4收集数据",
+  "main": "collector.js",
+  "scripts": {
+    "start": "node collector.js"
+  },
+  "dependencies": {
+    "axios": "^1.4.0"
+  }
+}
