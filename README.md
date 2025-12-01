@@ -11,5 +11,19 @@
 - 响应式设计，支持移动设备
 
 ## 项目结构
+mt4-trading-system/
+├── client/                 # 前端代码 (已部署在Netlify)
+├── server/                 # 后端API服务
+├── mt4-collector/          # MT4数据收集器
+└── README.md
+
+<TEXT>
+## 本地开发
+### 环境要求
+- Node.js 16+
+- npm 或 yarn
+### 安装依赖
+```bash
+npm install
 
 
