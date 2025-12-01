@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MT4交易监控系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(59, 130, 246, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+        
+        .fade-out {
+            animation: fadeOut 0.5s forwards;
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- 页面头部 -->
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800">MT4交易监控系统</h1>
+            <p class="text-gray-600 mt-2">实时监控您的交易账户状态</p>
+            <div class="mt-4 flex justify-center items-center space-x-4">
+                <div id="lastUpdateTime" class="text-sm text-gray-500">上次更新: 加载中...</div>
+                <div id="statusIndicator" class="flex items-center">
+                    <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                    <span class="text-sm text-green-600">在线</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 控制面板 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 md:mb-0">控制面板</h2>
+                <div class="flex space-x-3">
+                    <button id="refreshBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition duration-200">
+                        <svg id="refreshIcon" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span>刷新数据</span>
+                    </button>
+                    <button id="autoRefreshBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition duration-200">
+                        <svg id="autoRefreshIcon" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>自动刷新: 开启</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 账户概览 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6 transition duration-200 hover:shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">总余额</p>
+                        <p id="totalBalance" class="text-2xl font-bold text-gray-800 mt-1">$0.00</p>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-full">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6 transition duration-200 hover:shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">总权益</p>
+                        <p id="totalEquity" class="text-2xl font-bold text-gray-800 mt-1">$0.00</p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6 transition duration-200 hover:shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">总盈亏</p>
+                        <p id="totalProfitLoss" class="text-2xl font-bold mt-1">$0.00</p>
+                    </div>
+                    <div class="bg-purple-100 p-3 rounded-full">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6 transition duration-200 hover:shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">总持仓</p>
+                        <p id="totalTrades" class="text-2xl font-bold text-gray-800 mt-1">0</p>
+                    </div>
+                    <div class="bg-yellow-100 p-3 rounded-full">
+                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 账户详情表格 -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-800">账户详情</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 table-hover">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">账户ID</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">账户名</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">余额</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">权益</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">保证金</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">可用保证金</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">盈亏</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">持仓数</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="accountTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- 数据将通过JavaScript动态填充 -->
+                        <tr>
+                            <td colspan="9" class="px-6 py-4 text-center text-gray-500">
+                                加载中...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 盈亏趋势图表 -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-gray-800">盈亏趋势</h2>
+                <div class="flex space-x-2">
+                    <button class="chart-period-btn px-3 py-1 text-sm rounded bg-blue-100 text-blue-700" data-period="1">1天</button>
+                    <button class="chart-period-btn px-3 py-1 text-sm rounded text-gray-600 hover:bg-gray-100" data-period="7">7天</button>
+                    <button class="chart-period-btn px-3 py-1 text-sm rounded text-gray-600 hover:bg-gray-100" data-period="30">30天</button>
+                </div>
+            </div>
+            <div class="p-6">
+                <canvas id="profitLossChart" height="100"></canvas>
+            </div>
+        </div>
+
+        <!-- 连接状态 -->
+        <div id="connectionStatus" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg flex items-center">
+            <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+            <span>已连接到MT4服务器</span>
+        </div>
+
+        <!-- 通知容器 -->
+        <div id="notificationContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    </div>
+
+    <script>
+        // 全局变量
+        let chart = null;
+        let autoRefreshEnabled = true;
+        let refreshInterval = null;
+        let chartPeriod = 1; // 默认1天
+
+        // 模拟MT4服务器连接配置
+        const mt4Config = {
+            host: 'demo.mt4server.com',
+            port: 443,
+            timeout: 5000, // 5秒超时
+            reconnectAttempts: 3,
+            reconnectDelay: 3000 // 3秒重连间隔
+        };
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChart();
+            setupEventListeners();
+            fetchInitialData();
+            startAutoRefresh();
+            updateLastUpdateTime();
+        });
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 手动刷新按钮
+            document.getElementById('refreshBtn').addEventListener('click', function() {
+                this.disabled = true;
+                fetchAccountData().finally(() => {
+                    this.disabled = false;
+                });
+            });
+
+            // 自动刷新切换
+            document.getElementById('autoRefreshBtn').addEventListener('click', function() {
+                toggleAutoRefresh();
+            });
+
+            // 图表周期按钮
+            document.querySelectorAll('.chart-period-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // 更新按钮状态
+                    document.querySelectorAll('.chart-period-btn').forEach(b => {
+                        b.classList.remove('bg-blue-100', 'text-blue-700');
+                        b.classList.add('text-gray-600', 'hover:bg-gray-100');
+                    });
+                    this.classList.remove('text-gray-600', 'hover:bg-gray-100');
+                    this.classList.add('bg-blue-100', 'text-blue-700');
+                    
+                    // 更新图表周期
+                    chartPeriod = parseInt(this.dataset.period);
+                    updateChart();
+                });
+            });
+        }
+
+        // 从模拟的MT4 API获取数据
+        async function fetchMt4Data() {
+            // 模拟网络延迟
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 模拟数据获取过程
+            const mockAccounts = [
+                {
+                    id: '12345678',
+                    name: '主账户',
+                    balance: 12500.75,
+                    equity: 12850.30,
+                    margin: 245.50,
+                    freeMargin: 12604.80,
+                    profit: 350.25,
+                    trades: 3,
+                    status: '在线',
+                    lastUpdate: new Date().toISOString()
+                },
+                {
+                    id: '87654321',
+                    name: '交易账户',
+                    balance: 8750.40,
+                    equity: 9050.60,
+                    margin: 180.20,
+                    freeMargin: 8870.40,
+                    profit: 301.20,
+                    trades: 2,
+                    status: '在线',
+                    lastUpdate: new Date().toISOString()
+                },
+                {
+                    id: '11223344',
+                    name: '投资账户',
+                    balance: 15000.00,
+                    equity: 14850.00,
+                    margin: 800.00,
+                    freeMargin: 14050.00,
+                    profit: -150.00,
+                    trades: 1,
+                    status: '在线',
+                    lastUpdate: new Date().toISOString()
+                }
+            ];
+            
+            return mockAccounts;
+        }
+
+        // 获取账户数据
+        async function fetchAccountData() {
+            try {
+                showNotification('正在从MT4服务器获取数据...', 'info');
+                
+                // 模拟从MT4服务器获取数据
+                const accounts = await fetchMt4Data();
+                
+                // 更新UI
+                updateAccountTable(accounts);
+                updateSummaryCards(accounts);
+                updateChart();
+                
+                showNotification('数据获取成功！', 'success');
+                
+                return accounts;
+            } catch (error) {
+                console.error('获取账户数据失败:', error);
+                showNotification('获取数据失败: ' + error.message, 'error');
+                updateConnectionStatus(false);
+                throw error;
+            } finally {
+                updateLastUpdateTime();
+            }
+        }
+
+        // 获取初始数据
+        function fetchInitialData() {
+            fetchAccountData().catch(error => {
+                console.error('初始数据加载失败:', error);
+                showNotification('无法连接到MT4服务器，请检查网络连接', 'error');
+            });
+        }
+
+        // 更新账户表格
+        function updateAccountTable(accounts) {
+            const tableBody = document.getElementById('accountTableBody');
+            tableBody.innerHTML = '';
+            
+            accounts.forEach(account => {
+                const row = document.createElement('tr');
+                row.className = 'fade-in';
+                
+                const profitClass = account.profit >= 0 ? 'text-green-600' : 'text-red-600';
+                const statusColor = account.status === '在线' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${account.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${account.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${account.balance.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${account.equity.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${account.margin.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${account.freeMargin.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${profitClass}">
+                        $${account.profit.toFixed(2)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${account.trades}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
+                            ${account.status}
+                        </span>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // 更新汇总卡片
+        function updateSummaryCards(accounts) {
+            let totalBalance = 0;
+            let totalEquity = 0;
+            let totalProfitLoss = 0;
+            let totalTrades = 0;
+            
+            accounts.forEach(account => {
+                totalBalance += account.balance;
+                totalEquity += account.equity;
+                totalProfitLoss += account.profit;
+                totalTrades += account.trades;
+            });
+            
+            // 更新DOM
+            document.getElementById('totalBalance').textContent = `$${totalBalance.toFixed(2)}`;
+            document.getElementById('totalEquity').textContent = `$${totalEquity.toFixed(2)}`;
+            
+            const totalProfitLossElement = document.getElementById('totalProfitLoss');
+            totalProfitLossElement.textContent = `$${totalProfitLoss.toFixed(2)}`;
+            
+            // 根据盈亏设置颜色
+            if (totalProfitLoss >= 0) {
+                totalProfitLossElement.classList.add('text-green-600');
+                totalProfitLossElement.classList.remove('text-red-600');
+            } else {
+                totalProfitLossElement.classList.add('text-red-600');
+                totalProfitLossElement.classList.remove('text-green-600');
+            }
+            
+            document.getElementById('totalTrades').textContent = totalTrades;
+        }
+
+        // 初始化图表
+        function initializeChart() {
+            const ctx = document.getElementById('profitLossChart').getContext('2d');
+            
+            // 生成模拟的历史数据
+            const labels = generateDateLabels(chartPeriod);
+            const profitData = generateMockProfitData(labels.length);
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '总盈亏',
+                        data: profitData,
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `总盈亏: $${context.raw.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: '日期'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: '盈亏 ($)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 更新图表
+        function updateChart() {
+            if (!chart) return;
+            
+            // 生成模拟的历史数据
+            const labels = generateDateLabels(chartPeriod);
+            const profitData = generateMockProfitData(labels.length);
+            
+            // 更新图表数据
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = profitData;
+            
+            // 更新图表
+            chart.update();
+        }
+
+        // 生成日期标签
+        function generateDateLabels(days) {
+            const labels = [];
+            const today = new Date();
+            
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                labels.push(date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }));
+            }
+            
+            return labels;
+        }
+
+        // 生成模拟盈亏数据
+        function generateMockProfitData(count) {
+            const data = [];
+            let currentValue = 0;
+            
+            // 从今天的实际盈亏开始
+            try {
+                const accounts = document.querySelectorAll('#accountTableBody tr');
+                if (accounts.length > 0) {
+                    const lastProfitText = accounts[accounts.length - 1].querySelector('.text-green-600, .text-red-600').textContent;
+                    currentValue = parseFloat(lastProfitText.replace('$', ''));
+                }
+            } catch (e) {
+                // 忽略错误
+            }
+            
+            // 生成历史数据
+            for (let i = 0; i < count; i++) {
+                // 添加一些随机变化
+                const change = (Math.random() - 0.5) * 500; // -250 到 250 之间的随机变化
+                currentValue += change;
+                data.push(currentValue);
+            }
+            
+            return data;
+        }
+
+        // 开始自动刷新
+        function startAutoRefresh() {
+            // 每30秒刷新一次
+            refreshInterval = setInterval(() => {
+                if (autoRefreshEnabled) {
+                    fetchAccountData();
+                }
+            }, 30000);
+        }
+
+        // 切换自动刷新
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const autoRefreshBtn = document.getElementById('autoRefreshBtn');
+            const autoRefreshIcon = document.getElementById('autoRefreshIcon');
+            const autoRefreshText = autoRefreshBtn.querySelector('span');
+            
+            if (autoRefreshEnabled) {
+                autoRefreshBtn.classList.remove('bg-gray-600');
+                autoRefreshBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                autoRefreshText.textContent = '自动刷新: 开启';
+                showNotification('自动刷新已开启', 'success');
+            } else {
+                autoRefreshBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                autoRefreshBtn.classList.add('bg-gray-600');
+                autoRefreshText.textContent = '自动刷新: 关闭';
+                showNotification('自动刷新已关闭', 'info');
+            }
+        }
+
+        // 更新最后更新时间
+        function updateLastUpdateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('lastUpdateTime').textContent = `上次更新: ${timeString}`;
+        }
+
+        // 更新连接状态
+        function updateConnectionStatus(connected) {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const connectionStatus = document.getElementById('connectionStatus');
+            const statusDot = statusIndicator.querySelector('div');
+            const statusText = statusIndicator.querySelector('span');
+            const connectionDot = connectionStatus.querySelector('div');
+            const connectionText = connectionStatus.querySelector('span');
+            
+            if (connected) {
+                statusDot.classList.remove('bg-red-500');
+                statusDot.classList.add('bg-green-500');
+                statusText.textContent = '在线';
+                statusText.classList.remove('text-red-600');
+                statusText.classList.add('text-green-600');
+                
+                connectionDot.classList.remove('bg-red-500');
+                connectionDot.classList.add('bg-green-500');
+                connectionText.textContent = '已连接到MT4服务器';
+            } else {
+                statusDot.classList.remove('bg-green-500');
+                statusDot.classList.add('bg-red-500');
+                statusText.textContent = '离线';
+                statusText.classList.remove('text-green-600');
+                statusText.classList.add('text-red-600');
+                
+                connectionDot.classList.remove('bg-green-500');
+                connectionDot.classList.add('bg-red-500');
+                connectionText.textContent = '无法连接到MT4服务器';
+            }
+        }
+
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            
+            // 根据类型设置样式
+            let bgColor = 'bg-blue-500';
+            if (type === 'success') bgColor = 'bg-green-500';
+            if (type === 'error') bgColor = 'bg-red-500';
+            if (type === 'info') bgColor = 'bg-blue-500';
+            
+            notification.className = `${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center fade-in`;
+            
+            // 添加图标
+            let icon = '';
+            if (type === 'success') icon = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+            if (type === 'error') icon = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+            if (type === 'info') icon = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+            
+            notification.innerHTML = icon + message;
+            
+            // 添加到容器
+            container.appendChild(notification);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                notification.classList.add('fade-out');
+                setTimeout(() => {
+                    container.removeChild(notification);
+                }, 500);
+            }, 3000);
+        }
+
+        // 模拟与MT4服务器的连接状态检查
+        setInterval(() => {
+            // 随机决定是否断开连接（10%的概率）
+            const isConnected = Math.random() > 0.1;
+            updateConnectionStatus(isConnected);
+        }, 10000); // 每10秒检查一次
+    </script>
+</body>
+</html>
